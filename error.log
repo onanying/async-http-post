@@ -1,0 +1,10 @@
+2016/07/20 17:42:36 | ERROR | send_data | redis conn failed; Connection refused; 
+2016/07/20 17:42:58 | ERROR | send_data | redis conn failed; Connection refused; 
+2016/07/20 17:43:36 | ERROR | send_data | redis conn failed; Connection refused; 
+2016/07/20 17:43:43 | ERROR | send_data | redis conn failed; Connection refused; 
+2016/07/20 17:43:58 | ERROR | send_data | redis conn failed; Connection refused; 
+2016/07/20 17:44:36 | ERROR | send_data | redis conn failed; Connection refused; 
+2016/07/20 17:44:43 | ERROR | send_data | redis conn failed; Connection refused; 
+2016/07/20 17:44:58 | ERROR | send_data | redis conn failed; Connection refused; 
+2016/07/20 17:48:55 | ERROR | send_data | redis conn failed; Connection refused; 
+2016/07/20 17:54:03 | ERROR | send_data | redis conn failed; Connection refused; 
