@@ -24,6 +24,8 @@ string redisListKey;
 vector<libraries::JsonObject> postUrls;
 int httpTimeout;
 string nowPid;
+string cacheDirPath;
+string logSubDir;
 
 /// 获取配置文件
 void init_config(string file)
@@ -55,7 +57,7 @@ void post(string url, libraries::JsonObject params, string paramsStr, int * post
 
     // 写入log文件
     string msg = url + " | " + paramsStr + " | " + response;
-    helpers::log_info("http_post", msg);
+    helpers::log_info("http_post", msg, logSubDir);
 
     if (errCode == 200) {
         // 成功
@@ -64,7 +66,7 @@ void post(string url, libraries::JsonObject params, string paramsStr, int * post
         // 失败
         // 写入log文件
         string msg = url + " | " + paramsStr + " | " + response;
-        helpers::log_error("post", msg);
+        helpers::log_error("post", msg, logSubDir);
     }
 }
 
@@ -77,7 +79,7 @@ void start()
     try {
         models::RedisModel rs(redisHost, redisPort, redisAuth);
         // 将当前进程的缓存重新压入队列
-        string cacheStr = helpers::file_get_contents("cache/" + nowPid);
+        string cacheStr = helpers::file_get_contents(cacheDirPath + nowPid);
         if(!cacheStr.empty()){
             rs.pushList(redisListKey, cacheStr); // 数据重新压入队列
         }
@@ -86,7 +88,7 @@ void start()
             string paramsStr = rs.pullList(redisListKey, 3600); // 堵塞1小时
             if(!paramsStr.empty()){
                 // 存入缓存
-                helpers::file_put_contents("cache/" + nowPid, paramsStr, FILE_REPLACE);
+                helpers::file_put_contents(cacheDirPath + nowPid, paramsStr, FILE_REPLACE);
                 // 转换为json
                 libraries::JsonObject params = helpers::json_init(paramsStr);
                 // 循环发送给push_list里面的url
@@ -125,7 +127,7 @@ void start()
         }
     } catch (exception& ex) {
         // 将错误写入log文件
-        helpers::log_error("start", ex.what());
+        helpers::log_error("start", ex.what(), logSubDir);
         // 出错后堵塞一段时间
         sleep(60);
     }
@@ -162,7 +164,7 @@ void read_all_cache()
     // 将所有缓存重新压入队列
     models::RedisModel rs(redisHost, redisPort, redisAuth);
     vector<string> filenames;
-    get_filenames("cache", filenames);
+    get_filenames(cacheDirPath, filenames);
     BOOST_FOREACH (string item, filenames) {
         // 读取缓存
         string filename = string(item.c_str());
@@ -190,9 +192,6 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    // 获取当前进程id
-    nowPid = helpers::strval(getpid());
-
     // 初始化参数
     try {
         init_config(argc >= 2 ? argv[1] : "default.conf");
@@ -200,6 +199,14 @@ int main(int argc, char *argv[])
         cout << "INIT CONFIG ERROR: " << ex.what() << endl;
         return 1;
     }
+
+    // 获取当前进程id
+    nowPid = helpers::strval(getpid());
+
+    // 配置目录
+    string configFileName = argc >= 2 ? argv[1] : "default.conf";
+    cacheDirPath = "cache/" + configFileName + "/";
+    logSubDir = configFileName;
 
     // 读取所有缓存
     try {
