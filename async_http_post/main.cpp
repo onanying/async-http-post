@@ -25,7 +25,7 @@ vector<libraries::JsonObject> postUrls;
 int httpTimeout;
 string nowPid;
 string cacheDirPath;
-string logSubDir;
+string logDirPath;
 
 /// 获取配置文件
 void init_config(string file)
@@ -44,7 +44,7 @@ void init_config(string file)
         postUrls = helpers::json_get_array(jsonObj, "post_urls");
         httpTimeout = helpers::json_get_int(jsonObj, "http_timeout");
     } catch (exception& /* ex */) {
-        string msg = "配置文件 " + file + " 解析错误";
+        string msg = "配置文件 " + file + " 参数错误";
         throw libraries::Exception(msg);
     }
 }
@@ -57,7 +57,7 @@ void post(string url, libraries::JsonObject params, string paramsStr, int * post
 
     // 写入log文件
     string msg = url + " | " + paramsStr + " | " + response;
-    helpers::log_info("http_post", msg, logSubDir);
+    helpers::log_info("http_post", msg, logDirPath);
 
     if (errCode == 200) {
         // 成功
@@ -66,7 +66,7 @@ void post(string url, libraries::JsonObject params, string paramsStr, int * post
         // 失败
         // 写入log文件
         string msg = url + " | " + paramsStr + " | " + response;
-        helpers::log_error("post", msg, logSubDir);
+        helpers::log_error("post", msg, logDirPath);
     }
 }
 
@@ -79,7 +79,7 @@ void start()
     try {
         models::RedisModel rs(redisHost, redisPort, redisAuth);
         // 将当前进程的缓存重新压入队列
-        string cacheStr = helpers::file_get_contents(cacheDirPath + nowPid);
+        string cacheStr = helpers::file_get_contents(cacheDirPath + "/" + nowPid);
         if(!cacheStr.empty()){
             rs.pushList(redisListKey, cacheStr); // 数据重新压入队列
         }
@@ -88,7 +88,7 @@ void start()
             string paramsStr = rs.pullList(redisListKey, 3600); // 堵塞1小时
             if(!paramsStr.empty()){
                 // 存入缓存
-                helpers::file_put_contents(cacheDirPath + nowPid, paramsStr, FILE_REPLACE);
+                helpers::file_put_contents(cacheDirPath + "/" + nowPid, paramsStr, FILE_REPLACE);
                 // 转换为json
                 libraries::JsonObject params = helpers::json_init(paramsStr);
                 // 循环发送给push_list里面的url
@@ -127,35 +127,10 @@ void start()
         }
     } catch (exception& ex) {
         // 将错误写入log文件
-        helpers::log_error("start", ex.what(), logSubDir);
+        helpers::log_error("start", ex.what(), logDirPath);
         // 出错后堵塞一段时间
         sleep(60);
     }
-}
-
-/// 获取文件夹下的所有文件名
-int get_filenames(std::string dir, std::vector<std::string>& filenames)
-{
-    boost::filesystem::path path(dir);
-    if (!boost::filesystem::exists(path))
-    {
-        return -1;
-    }
-
-    boost::filesystem::directory_iterator end_iter;
-    for (boost::filesystem::directory_iterator iter(path); iter!=end_iter; ++iter)
-    {
-        if (boost::filesystem::is_regular_file(iter->status()))
-        {
-            filenames.push_back(iter->path().string());
-        }
-        if (boost::filesystem::is_directory(iter->status()))
-        {
-            get_filenames(iter->path().string(), filenames);
-        }
-    }
-
-    return filenames.size();
 }
 
 /// 读取所有缓存
@@ -163,8 +138,7 @@ void read_all_cache()
 {
     // 将所有缓存重新压入队列
     models::RedisModel rs(redisHost, redisPort, redisAuth);
-    vector<string> filenames;
-    get_filenames(cacheDirPath, filenames);
+    vector<string> filenames = helpers::readdir(cacheDirPath);
     BOOST_FOREACH (string item, filenames) {
         // 读取缓存
         string filename = string(item.c_str());
@@ -205,8 +179,9 @@ int main(int argc, char *argv[])
 
     // 配置目录
     string configFileName = argc >= 2 ? argv[1] : "default.conf";
-    cacheDirPath = "cache/" + configFileName + "/";
-    logSubDir = configFileName;
+    configFileName += ".DATA";
+    cacheDirPath = configFileName + "/cache";
+    logDirPath = configFileName + "/log";
 
     // 读取所有缓存
     try {

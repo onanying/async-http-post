@@ -31,6 +31,8 @@
 
 ## 配置 (config)
 
+> 每个配置文件会生成一个 .DATA 的数据文件夹，里面有log与cache两个文件夹
+
 redis_list_key: redis内list类型的key (“queue_user_token” 实际存储key为 “list:queue_user_token”)  
 http_timeout: http请求的超时时间，单位:秒  
 post_urls: 接收数据的url清单，POST请求  
@@ -56,12 +58,12 @@ post_urls: 接收数据的url清单，POST请求
 }
 ```
 
-## 日志
+## 日志 (log)
 
 日志在log目录里，按日期每天生成一个日志文件，请定期手动清理日志。  
 每次http请求与响应占一行记录，error.log记录错误日志，info.log记录所有日志。
 
-## 缓存
+## 缓存 (cache)
 
 缓存在cache目录里，程序会自动管理，请勿删除，否则会丢失数据。
 
